@@ -12,6 +12,37 @@ This repo mirrors the four core stages of the AWS RWE pipeline described by Ande
 
 ---
 
+## 📚 Part of the RWE Senior Management Playbook Series
+
+This repository is the **fourth installment** in a coordinated series of playbooks designed for senior leadership, methodologists, and data/AI engineers working with Real-World Evidence (RWE).  
+
+1. **Governance & Analytics**  
+   👉 [RWE-governance-and-analytics-playbook-openFDA-clinicaltrials-CDC-OMOP-FHIR-ROI](https://github.com/camontefusco/RWE-governance-and-analytics-playbook-openFDA-clinicaltrials-CDC-OMOP-FHIR-ROI)  
+   *Strategy, ROI models, governance frameworks, and integration of multi-source RWD (openFDA, ClinicalTrials, CDC).*
+
+2. **Privacy & Compliance**  
+   👉 [Integrated-RWE-Privacy-De-identification-Compliance-HIPAA-GDPR-DUA-and-ROI-Playbook](https://github.com/camontefusco/Integrated-RWE-Privacy-De-identification-Compliance-HIPAA-GDPR-DUA-and-ROI-Playbook)  
+   *Privacy-enhancing technologies, HIPAA/GDPR compliance, DUAs, and de-identification pipelines.*
+
+3. **Methods & Evidence**  
+   👉 [RWE-Methods-and-Evidence-Playbook](https://github.com/camontefusco/RWE-Methods-and-Evidence-Playbook)  
+   *Best practices for study design, causal inference, and evidence frameworks in RWE.*
+
+4. **AI & NLP**  
+   👉 [RWE-AI-NLP-Integration-Playbook](https://github.com/camontefusco/RWE-AI-NLP-Integration-Playbook)  
+   *Integrating unstructured data and modern NLP/LLM approaches into RWE analytics.*
+
+5. **Integration & Interoperability (AWS-first)** *(this repo)*  
+   👉 [RWE-AWS-Integration-Interoperability-Pipeline](https://github.com/camontefusco/RWE-AWS-Integration-Interoperability-Pipeline)  
+   *Hands-on, cloud-native AWS pipeline aligned to Anderson et al. (2024) tutorial — ingestion → transformation (OMOP/FHIR) → dashboards → analytics/ML.*
+
+---
+
+> 💡 Together, these repos create a **comprehensive, senior-level RWE playbook**:  
+> from **governance and compliance**, through **methodological rigor**, to **AI/NLP innovation**, and now a **demoable cloud-native pipeline**.
+
+---
+
 ## 📁 Repository Structure
 ```plaintext
 RWE-Integration-and-Interoperability-Playbook/
