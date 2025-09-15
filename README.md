@@ -181,3 +181,9 @@ duckdb   # for local SQL sanity checks
 🔲 SageMaker clustering demo (Kmodes on curated data)
 
 🔲 Glue Crawler + Parquet for performance
+
+📚 References
+
+Anderson W. et al. (2024), Real-world evidence in the cloud: Tutorial on developing an end-to-end data and analytics pipeline using AWS, Clin Transl Sci, 17:e70078.
+
+OMOP CDM — https://ohdsi.github.io/CommonDataModel/
