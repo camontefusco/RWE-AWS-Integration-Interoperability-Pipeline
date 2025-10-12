@@ -182,6 +182,18 @@ duckdb   # for local SQL sanity checks
 
 🔲 Glue Crawler + Parquet for performance
 
+## 📊 Mock Dashboard (Athena-first)
+
+Until QuickSight or Grafana is enabled, results are visualized from Athena query outputs.
+
+| Metric | Example Output | Visualization Type |
+|--------|----------------|--------------------|
+| Gender distribution | M: 45, F: 55 | Pie chart |
+| Top conditions | Hypertension (36), Diabetes (42) | Horizontal bar |
+| Notes with keywords | 62% | KPI card |
+| Observations per patient | 5.4 avg. per patient | Histogram |
+
+
 📚 References
 
 Anderson W. et al. (2024), Real-world evidence in the cloud: Tutorial on developing an end-to-end data and analytics pipeline using AWS, Clin Transl Sci, 17:e70078.
