@@ -1,0 +1,48 @@
+service: rwe-mini-pipeline
+
+provider:
+  name: aws
+  runtime: python3.10
+  region: eu-central-1
+  stage: ${opt:stage, 'dev'}
+  timeout: 60
+  memorySize: 256
+  logRetentionInDays: 14
+  environment:
+    BUCKET: ${param:bucket}
+    CURATED_PREFIX: curated/
+    FHIR_PREFIX: fhir/
+    PSEUD_ID_SALT: ${param:salt, 'demo-salt'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::${param:bucket}
+            - arn:aws:s3:::${param:bucket}/*
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+
+functions:
+  ingestTransform:
+    handler: aws/lambda_handler.handler   # file: aws/lambda_handler.py, function: handler
+    description: S3 PUT -> lightweight transform -> OMOP-ish CSV + FHIR NDJSON
+    events:
+      - s3:
+          bucket: ${param:bucket}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: raw/
+          existing: true
+
+params:
+  default:
+    bucket: your-existing-bucket

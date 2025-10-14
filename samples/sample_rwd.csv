@@ -1,0 +1,3 @@
+patient_id,gender,birth_date,condition_code,condition_date,observation_code,observation_value,observation_date,notes
+p1,M,1980-05-05,E11.9,2020-01-02,718-7,13.2,2021-03-10,"Patient with diabetes follow-up, elevated hemoglobin."
+p2,F,1972-01-01,I10,2019-12-01,2093-3,180,2021-01-05,"Blood pressure under control."

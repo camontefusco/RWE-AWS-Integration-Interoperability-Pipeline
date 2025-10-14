@@ -1,0 +1,27 @@
+flowchart LR
+  subgraph S3["Amazon S3 (your bucket)"]
+    RAW["raw/ (landing)"]
+    CUR["curated/ (OMOP-ish)"]
+    FHIR["fhir/ (NDJSON)"]
+    ANA["analytics/ (cluster outputs)"]
+  end
+
+  UPL[("Upload files\nsample_rwd_*.csv")]
+  EVT["S3 ObjectCreated event"]
+  LMB["Lambda: ingestTransform\n• de-ID (salted)\n• transform_df()\n• write CSV + NDJSON"]
+  ATH["Athena External Tables\nrwe_playbook.*"]
+  SQL["Athena SQL / Views\n(rwe_playbook, rwe_external)"]
+  KME["KMeans (stub)\naws/analytics_kmeans_stub.py"]
+  DB["Visuals\n• Athena chart\n• QuickSight (optional)"]
+
+  UPL --> RAW
+  RAW -->|event| EVT --> LMB
+  LMB -->|CSV| CUR
+  LMB -->|NDJSON| FHIR
+  CUR --> ATH
+  FHIR --> ATH
+  ATH --> SQL
+  SQL --> DB
+
+  CUR -->|person/obs/cond\nperson.csv etc.| KME
+  KME -->|assignments.csv| ANA --> DB

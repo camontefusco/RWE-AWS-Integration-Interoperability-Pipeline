@@ -1,0 +1,8 @@
+flowchart TB
+  U[Users / CI] -->|Put raw CSV| S3R[S3 raw/]
+  S3R -->|event| L[Lambda transform]
+  L --> S3C[S3 curated/ & fhir/]
+  S3C --> A[Athena DB rwe_playbook]
+  A --> V[Visualization (Athena charts / QuickSight)]
+  S3C --> K[KMeans stub → analytics/]
+  K --> V

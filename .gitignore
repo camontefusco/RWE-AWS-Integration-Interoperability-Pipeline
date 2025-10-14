@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.local_out*/
+local_out*/
+reports/*.html
+reports/*.csv
+.aws-sam/
+.env
+node_modules/
+docs/*.png
+docs/*.svg
+.github/workflows/ci.yml

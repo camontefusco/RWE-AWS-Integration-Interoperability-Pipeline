@@ -1,0 +1,21 @@
+{
+    "LambdaFunctionConfigurations": [
+        {
+            "Id": "rwe-mini-pipeline-dev-ingestTransform-b1dc47031c29f5b655ba6b524ebe02a6",
+            "LambdaFunctionArn": "arn:aws:lambda:eu-central-1:570367130981:function:rwe-mini-pipeline-dev-ingestTransform",
+            "Events": [
+                "s3:ObjectCreated:*"
+            ],
+            "Filter": {
+                "Key": {
+                    "FilterRules": [
+                        {
+                            "Name": "Prefix",
+                            "Value": "raw/"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

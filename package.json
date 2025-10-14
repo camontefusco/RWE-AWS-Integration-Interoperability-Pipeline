@@ -1,0 +1,16 @@
+{
+  "name": "rwe-aws-integration-interoperability-pipeline",
+  "version": "1.0.0",
+  "description": "**Goal:**   End-to-end pipeline on AWS to ingest real-world data (RWD), normalize into a lightweight **OMOP-ish** schema, expose a **FHIR-ish** JSON view, and enable analytics through SQL, dashboards, and ML.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

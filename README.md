@@ -199,3 +199,9 @@ Until QuickSight or Grafana is enabled, results are visualized from Athena query
 Anderson W. et al. (2024), Real-world evidence in the cloud: Tutorial on developing an end-to-end data and analytics pipeline using AWS, Clin Transl Sci, 17:e70078.
 
 OMOP CDM — https://ohdsi.github.io/CommonDataModel/
+
+## Extensibility roadmap
+- Add openFDA AE external table (`rwe_external.openfda_adverse_events`) + joins.
+- Convert curated CSV → Parquet and register with Glue Crawler for faster Athena.
+- Attach QuickSight (or Managed Grafana) when account limits allow.
+- Orchestrate with Step Functions: ingest → transform → Athena → (opt) SageMaker.

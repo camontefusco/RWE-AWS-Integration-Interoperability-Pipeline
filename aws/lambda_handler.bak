@@ -1,0 +1,193 @@
+import os, json, csv, io, re
+from datetime import datetime
+import boto3
+
+s3 = boto3.client("s3")
+
+CURATED_PREFIX = os.environ.get("CURATED_PREFIX", "curated/")
+FHIR_PREFIX = os.environ.get("FHIR_PREFIX", "fhir/")
+
+_STOPWORDS = set(("a an the for and but with without from into onto over under this that those these very have has had "
+                  "were was are been being will would could should might about above below after again against all am any "
+                  "as at be because been before being between both by cannot did do does doing down during each few further "
+                  "here how if in into is its itself just more most no nor not now of off on once only or other our out over "
+                  "own same so some such than then there these they through to too until up very via what when where which "
+                  "while who whom why will with you your yours").split())
+
+def _kw_from_notes(text: str) -> str:
+    if not isinstance(text, str) or not text.strip():
+        return ""
+    t = re.sub(r"[^a-z0-9\s]", " ", text.lower())
+    words = [w for w in t.split() if len(w) > 3 and w not in _STOPWORDS]
+    uniq = sorted(set(words))
+    return ",".join(uniq[:10])
+
+def _gender_concept(g: str) -> str:
+    x = (g or "").strip().lower()
+    if x in ("m","male"): return "M"
+    if x in ("f","female"): return "F"
+    if x in ("o","other","nonbinary","non-binary","nb"): return "O"
+    return "UNK"
+
+def _gender_fhir(gcode: str) -> str:
+    m = {"M":"male","F":"female","O":"other"}
+    return m.get(gcode, "unknown")
+
+def _safe_date(s: str) -> str:
+    if not s: return datetime.utcnow().date().isoformat()
+    try:
+        return datetime.fromisoformat(str(s)[:10]).date().isoformat()
+    except Exception:
+        return datetime.utcnow().date().isoformat()
+
+def handler(event, context):
+    # S3 PUT event or manual {"bucket": "...", "key": "raw/....csv"}
+    records = event.get("Records") or []
+    if records and records[0].get("eventSource") == "aws:s3":
+        bucket = records[0]["s3"]["bucket"]["name"]
+        keys = [r["s3"]["object"]["key"] for r in records]
+    else:
+        bucket = event.get("bucket") or os.environ.get("BUCKET")
+        keys = [event.get("key")] if event.get("key") else []
+
+    if not bucket or not keys:
+        return {"status":"no_input", "event":event}
+
+    results = []
+    for key in keys:
+        if not key.lower().endswith(".csv"):
+            continue
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        raw = obj["Body"].read().decode("utf-8")
+
+        # De-ID drop (best-effort)
+        reader = csv.DictReader(io.StringIO(raw))
+        rows = []
+        for r in reader:
+            for phi in ("name","address","phone","email","ssn"):
+                if phi in r: r.pop(phi)
+            rows.append(r)
+
+        # Heuristic column names
+        def pick(r, *names): 
+            for n in names:
+                if n in r: return n
+            return None
+        sample = rows[0] if rows else {}
+        pid_col        = pick(sample, "patient_id","person_id","id")
+        gender_col     = pick(sample, "gender","sex")
+        bdate_col      = pick(sample, "birth_date","birthdate","dob")
+        cond_code_col  = pick(sample, "condition_code","icd10","icd_code","dx_code")
+        cond_date_col  = pick(sample, "condition_date","onset_date","dx_date","condition_start_date")
+        obs_code_col   = pick(sample, "observation_code","loinc","lab_code")
+        obs_value_col  = pick(sample, "observation_value","value","lab_value","value_as_number")
+        obs_date_col   = pick(sample, "observation_date","effective_date")
+        notes_col      = pick(sample, "notes","note","clinical_notes","free_text")
+
+        # Build OMOP-ish
+        persons = {}
+        cond_rows = []
+        obs_rows = []
+        cond_id = 1
+        obs_id = 1
+        for r in rows:
+            pid = str(r.get(pid_col) or "")
+            if not pid: 
+                continue
+
+            # person (once)
+            if pid not in persons:
+                gcode = _gender_concept(r.get(gender_col) if gender_col else "")
+                bdate = str(r.get(bdate_col) or "")
+                try:
+                    y = int(bdate[:4]) if bdate else 1900
+                except Exception:
+                    y = 1900
+                persons[pid] = {"person_id": pid, "gender_concept_code": gcode, "year_of_birth": y}
+
+            # condition_occurrence
+            ccode = r.get(cond_code_col) if cond_code_col else None
+            if ccode:
+                cond_rows.append({
+                    "condition_occurrence_id": str(cond_id),
+                    "person_id": pid,
+                    "condition_concept_code": str(ccode),
+                    "condition_start_date": _safe_date(r.get(cond_date_col) if cond_date_col else "")
+                })
+                cond_id += 1
+
+            # observation
+            ocode = r.get(obs_code_col) if obs_code_col else None
+            if ocode:
+                val = r.get(obs_value_col) if obs_value_col else None
+                try:
+                    valnum = float(val) if val not in (None,"") else None
+                except Exception:
+                    valnum = None
+                kw = _kw_from_notes(r.get(notes_col) or "") if notes_col else ""
+                obs_rows.append({
+                    "observation_id": str(obs_id),
+                    "person_id": pid,
+                    "observation_concept_code": str(ocode),
+                    "value_as_number": valnum,
+                    "observation_date": _safe_date(r.get(obs_date_col) if obs_date_col else ""),
+                    "notes_keywords": kw or None
+                })
+                obs_id += 1
+
+        # Write OMOP-ish CSVs
+        ts = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+        base = os.path.splitext(os.path.basename(key))[0]
+        def put_csv(header, records, outkey):
+            buf = io.StringIO()
+            w = csv.DictWriter(buf, fieldnames=header)
+            w.writeheader()
+            for rec in records: w.writerow(rec)
+            s3.put_object(Bucket=bucket, Key=outkey, Body=buf.getvalue().encode("utf-8"))
+            return outkey
+
+        person_key = f"{CURATED_PREFIX}person/{base}_{ts}.csv"
+        cond_key   = f"{CURATED_PREFIX}condition_occurrence/{base}_{ts}.csv"
+        obs_key    = f"{CURATED_PREFIX}observation/{base}_{ts}.csv"
+
+        p_out = put_csv(["person_id","gender_concept_code","year_of_birth"], list(persons.values()), person_key)
+        c_out = put_csv(["condition_occurrence_id","person_id","condition_concept_code","condition_start_date"], cond_rows, cond_key)
+        o_out = put_csv(["observation_id","person_id","observation_concept_code","value_as_number","observation_date","notes_keywords"], obs_rows, obs_key)
+
+        # FHIR-ish NDJSON
+        def ndjson_put(records, outkey):
+            buf = io.StringIO()
+            for r in records:
+                buf.write(json.dumps(r) + "\n")
+            s3.put_object(Bucket=bucket, Key=outkey, Body=buf.getvalue().encode("utf-8"))
+            return outkey
+
+        fhir_patients = []
+        for pid, p in persons.items():
+            fhir_patients.append({"resourceType":"Patient", "id": pid, "gender": _gender_fhir(p["gender_concept_code"]), "birthDate": f"{p['year_of_birth']}-01-01"})
+        fhir_conditions = [{"resourceType":"Condition","id": str(i+1),
+                            "subject":{"reference": f"Patient/{r['person_id']}"},
+                            "code":{"coding":[{"system":"http://hl7.org/fhir/sid/icd-10","code": r["condition_concept_code"]}]},
+                            "onsetDateTime": r["condition_start_date"]} for i, r in enumerate(cond_rows)]
+        fhir_observations = []
+        for i, r in enumerate(obs_rows):
+            note = [{"text_keywords": r["notes_keywords"]}] if r.get("notes_keywords") else None
+            valq = {"value": r["value_as_number"]} if r.get("value_as_number") is not None else None
+            fhir_observations.append({"resourceType":"Observation","id": str(i+1),
+                                      "subject":{"reference": f"Patient/{r['person_id']}"},
+                                      "code":{"coding":[{"system":"http://hl7.org/fhir/sid/icd-10","code": r["observation_concept_code"]}]},
+                                      "valueQuantity": valq,
+                                      "effectiveDateTime": r["observation_date"],
+                                      "note": note})
+
+        pat_key = f"{FHIR_PREFIX}Patient/{base}_{ts}.ndjson"
+        con_key = f"{FHIR_PREFIX}Condition/{base}_{ts}.ndjson"
+        ob_key  = f"{FHIR_PREFIX}Observation/{base}_{ts}.ndjson"
+
+        pat_out = ndjson_put(fhir_patients, pat_key)
+        con_out = ndjson_put(fhir_conditions, con_key)
+        ob_out  = ndjson_put(fhir_observations, ob_key)
+
+        results.append({"curated":{"person":p_out,"condition_occurrence":c_out,"observation":o_out},
+                        "fhir":{"Patient":pat_out,"Condition":con_out,"Observation":ob_out}})
+    return {"status":"ok","results":results}
