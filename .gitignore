@@ -11,3 +11,7 @@ node_modules/
 docs/*.png
 docs/*.svg
 .github/workflows/ci.yml
+aws/.serverless/
+local_out*/
+reports/*.csv
+athena-results/
