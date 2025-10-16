@@ -1,6 +1,7 @@
+```mermaid
 flowchart TD
   A[Raw (Landing)\nS3: raw/] --> B[Curated (Conformed)\nS3: curated/ and fhir/]
   B --> C[Query Layer\nAthena DB: rwe_playbook]
   C --> D[Analytics\nS3: analytics/ (clusters)]
   C --> E[Dashboards\nAthena visuals / QuickSight]
-
+```
