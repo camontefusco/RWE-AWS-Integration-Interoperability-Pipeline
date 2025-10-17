@@ -3,13 +3,44 @@
 **Goal:**  
 End-to-end pipeline on AWS to ingest real-world data (RWD), normalize into a lightweight **OMOP-ish** schema, expose a **FHIR-ish** JSON view, and enable analytics through SQL, dashboards, and ML.
 
-This repo mirrors the four core stages of the AWS RWE pipeline described by Anderson et al. (2024):
+[![AWS](https://img.shields.io/badge/AWS-Cloud-orange?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+[![Lambda](https://img.shields.io/badge/AWS-Lambda-orange?logo=awslambda&logoColor=white)](https://docs.aws.amazon.com/lambda/)
+[![Step Functions](https://img.shields.io/badge/AWS-Step%20Functions-orange?logo=awsstepfunctions&logoColor=white)](https://docs.aws.amazon.com/step-functions/)
+[![S3](https://img.shields.io/badge/AWS-S3-orange?logo=amazons3&logoColor=white)](https://docs.aws.amazon.com/s3/)
+[![Athena](https://img.shields.io/badge/AWS-Athena-orange?logo=amazon-aws&logoColor=white)](https://docs.aws.amazon.com/athena/)
+[![FHIR](https://img.shields.io/badge/FHIR-v5.0+-red?logo=fhir&logoColor=white)](https://www.hl7.org/fhir/)
+[![OMOP](https://img.shields.io/badge/OMOP-CDM-blue)](https://ohdsi.github.io/CommonDataModel/)
+[![SQL](https://img.shields.io/badge/SQL-ANSI-blue)](https://en.wikipedia.org/wiki/SQL)
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
-1. **Ingestion** → S3 / RDS + Lambda  
-2. **Transformation** → Step Functions + Lambda (OMOP & FHIR mapping, optional NLP)  
-3. **Dashboards** → QuickSight (interactive, real-time)  
-4. **Analytics** → Athena + SageMaker (SQL + clustering/ML)
+![Banner](banner.png)
 
+---
+
+## 🧩 Overview
+
+This repository demonstrates an **end-to-end AWS pipeline** for ingesting Real-World Evidence (RWE) data, transforming it into:
+- an **OMOP-ish** tabular model (`/curated`)
+- a **FHIR-ish** JSON structure (`/fhir`)
+
+and enabling analytics via **Athena**, **SQL**, **QuickSight**, and **Python-based ML**.
+
+---
+
+## 🗂️ Branches Overview
+
+| Branch | Description |
+|--------|--------------|
+| **main** | Core codebase, docs, and architecture files |
+| **curated** | Example output layout for `/curated` CSV and `/fhir` NDJSON |
+| **reports** | Example CSV reports and summaries |
+| **athena-results** | Athena query result structure (CSV) |
+| **analytics** | notebooks |
+
+```bash
+git fetch --all
+git checkout <branch>
+```
 ---
 
 ## 📚 Part of the RWE Senior Management Playbook Series
@@ -43,34 +74,23 @@ This repository is the **fourth installment** in a coordinated series of playboo
 
 ---
 
-## 📁 Repository Structure
+## 📁 Repository Structure (main branch)
 ```plaintext
-RWE-Integration-and-Interoperability-Playbook/
-├── aws/
-│ ├── lambda_handler.py # core Lambda for ingestion + transform
-│ ├── serverless.yaml # IaC (SAM / Serverless Framework)
-│ ├── athena_ddl.sql # Athena external tables for curated data
-│ └── step_functions.asl.json # (optional) orchestration stub
-│
-├── pipeline/
-│ ├── transform.py # OMOP & FHIR normalization logic
-│ └── schemas.py # schema validators/mappers
-│
-├── reports/
-│ └── interoperability_summary.md # sample queries + mini-dashboard
-│
-├── tests/
-│ └── test_transform.py
-│
-├── requirements.txt
-└── README.md
+aws/            # Lambda, IaC, and Athena DDL (aws/athena_ddl.sql)
+pipeline/       # Transformation logic and schema mapping
+diagrams/       # Architecture diagrams
+docs/           # Supporting documentation
+samples/        # Sample raw data inputs
+tests/          # Unit tests (pytest)
+ARCHITECTURE.md
+DATA_DICTIONARY.md
 ```
 
 ---
 
 ## 1️⃣ Data Ingestion
 
-- **Source**: Raw JSON/CSV (synthetic or OpenFDA).  
+- **Source**: Raw JSON/CSV (synthetic or OpenFDA).  This project uses sample real-world evidence (RWE) data from [openfda_ae.csv](https://github.com/camontefusco/RWE-AWS-Integration-Interoperability-Pipeline/blob/raw/openfda_ae.csv) stored in the `raw` branch.
 - **Landing**: S3 bucket (`/raw/`).  
 - **Lambda**: Polls source or triggered on upload, validates schema, writes to S3 (`/raw/`) or RDS (Postgres).  
 - **Security**: S3 encryption, IAM roles, CloudWatch logging, optional de-identification.
@@ -78,17 +98,13 @@ RWE-Integration-and-Interoperability-Playbook/
 ```bash
 aws s3 cp sample_raw.json s3://<your-bucket>/raw/
 ```
-2️⃣ Data Transformation
+## 2️⃣ Data Transformation
 
-Orchestration: AWS Step Functions (stub provided).
-
-Logic: pipeline/transform.py normalizes to OMOP-ish tables and FHIR-ish NDJSON.
-
-Outputs:
-
-S3 /curated/ → OMOP-ish CSV (person, condition_occurrence, observation)
-
-S3 /fhir/ → FHIR-ish NDJSON (Patient, Condition, Observation)
+- Orchestration: AWS Step Functions (stub provided).
+- Logic: pipeline/transform.py normalizes to OMOP-ish tables and FHIR-ish NDJSON.
+- Outputs:
+   - S3 /curated/ → OMOP-ish CSV (person, condition_occurrence, observation)
+   - S3 /fhir/ → FHIR-ish NDJSON (Patient, Condition, Observation)
 
 Example Athena table (see aws/athena_ddl.sql):
 ```sql
@@ -103,105 +119,73 @@ WITH SERDEPROPERTIES ('serialization.format' = ',')
 LOCATION 's3://<bucket>/curated/condition_occurrence/'
 TBLPROPERTIES ('skip.header.line.count'='1');
 ```
-Optional advanced transform:
 
-NLP stub (topic modeling / entity extraction on unstructured notes field).
+## 3️⃣ Dashboards & Reports
+- Default: Amazon QuickSight dashboards (connect to Athena or RDS).
+- Stub: reports/interoperability_summary.md includes sample SQL queries + markdown tables as a lightweight stand-in.
 
-Placeholder for LLM/NER integration.
+## 4️⃣ Analytics & ML
+- Baseline: Query curated data in Athena or DuckDB (local test).
+- Advanced: SageMaker clustering stub (Kmodes on categorical features).
 
-3️⃣ Dashboards & Reports
+## ✅ Interoperability Checks
+- OMOP-ish presence: person.csv, condition_occurrence.csv, observation.csv.
+- FHIR-ish presence: Patient.ndjson, Condition.ndjson, Observation.ndjson.
+- Vocabulary tags preserved: ICD-10, LOINC.
+- Queryable: Athena external tables + dashboards.
 
-Default: Amazon QuickSight dashboards (connect to Athena or RDS).
+## 🔐 Security
+- Encryption: S3 default encryption (SSE-S3 / SSE-KMS).
+- Access Control: IAM least privilege for Lambda/Athena.
+- Logging: CloudWatch for pipeline steps.
+- PHI handling: Stub de-identification functions; real deployment must align with HIPAA/GxP.
 
-Stub: reports/interoperability_summary.md includes sample SQL queries + markdown tables as a lightweight stand-in.
-
-Alternatives: Grafana, OpenSearch, Superset.
-
-Example QuickSight panel:
-
-Age distribution of patients
-
-Conditions by vocabulary (ICD-10)
-
-Observations (LOINC labs) over time
-4️⃣ Analytics & ML
-
-Baseline: Query curated data in Athena or DuckDB (local test).
-
-Advanced:
-
-SageMaker clustering stub (Kmodes on categorical features).
-
-Optional notebook showing how to load curated data from S3 into SageMaker for analysis.
-
-Example query (Athena):
-```sql
-SELECT condition_concept_code, COUNT(*) as n
-FROM rwe_playbook.condition_occurrence
-GROUP BY condition_concept_code
-ORDER BY n DESC
-LIMIT 10;
-```
-✅ Interoperability Checks
-
-OMOP-ish presence: person.csv, condition_occurrence.csv, observation.csv.
-
-FHIR-ish presence: Patient.ndjson, Condition.ndjson, Observation.ndjson.
-
-Vocabulary tags preserved: ICD-10, LOINC.
-
-Queryable: Athena external tables + dashboards.
-
-🔐 Security
-
-Encryption: S3 default encryption (SSE-S3 / SSE-KMS).
-
-Access Control: IAM least privilege for Lambda/Athena.
-
-Logging: CloudWatch for pipeline steps.
-
-PHI handling: Stub de-identification functions; real deployment must align with HIPAA/GxP.
-
-🛠 Requirements
+## 🛠 Requirements
 ```graphql
 pandas
 boto3
 duckdb   # for local SQL sanity checks
 ```
-📌 Roadmap
+---
 
-✅ S3 + Lambda → OMOP & FHIR outputs
+## ⚙️ Workflow
 
-✅ Athena queries (DDL provided)
+- **Ingest** → Upload raw JSON/CSV to **S3** (`/raw`) via **AWS Lambda**  
+- **Transform** → **Step Functions** + Lambda produce `/curated` (CSV) and `/fhir` (NDJSON) outputs  
+- **Query** → Define **Athena** external tables from [`aws/athena_ddl.sql`](aws/athena_ddl.sql)  
+- **Analyze & Report** → Build **QuickSight dashboards**, explore CSVs in [`reports/`](https://github.com/camontefusco/RWE-AWS-Integration-Interoperability-Pipeline/tree/reports), or run notebooks in [`analytics/`](https://github.com/camontefusco/RWE-AWS-Integration-Interoperability-Pipeline/tree/analytics)
 
-🔲 Step Functions orchestration (stub included)
+- **Data Source** – [openfda_ae.csv](https://github.com/camontefusco/RWE-AWS-Integration-Interoperability-Pipeline/blob/raw/openfda_ae.csv)  
+  Synthetic RWE sample derived from **OpenFDA adverse event** datasets.  
 
-🔲 QuickSight dashboards (link Athena to QuickSight)
+- **Athena DDL** – [`aws/athena_ddl.sql`](aws/athena_ddl.sql)  
+  Defines external tables for querying curated data in S3.  
 
-🔲 SageMaker clustering demo (Kmodes on curated data)
+- **Transformation Logic** – [`pipeline/transform.py`](pipeline/transform.py)  
+  Normalizes input to OMOP and FHIR structures.  
 
-🔲 Glue Crawler + Parquet for performance
+- **Reports & Summaries** – [`reports/`](https://github.com/camontefusco/RWE-AWS-Integration-Interoperability-Pipeline/tree/reports)  
+  Contains summary CSVs and interoperability overview markdown.  
 
-## 📊 Mock Dashboard (Athena-first)
+- **Analytics & ML** – [`analytics/`](https://github.com/camontefusco/RWE-AWS-Integration-Interoperability-Pipeline/tree/analytics)  
+  Holds SQL, notebooks, and exploration scripts.
 
-Until QuickSight or Grafana is enabled, results are visualized from Athena query outputs.
+---
 
-| Metric | Example Output | Visualization Type |
-|--------|----------------|--------------------|
-| Gender distribution | M: 45, F: 55 | Pie chart |
-| Top conditions | Hypertension (36), Diabetes (42) | Horizontal bar |
-| Notes with keywords | 62% | KPI card |
-| Observations per patient | 5.4 avg. per patient | Histogram |
+## 🧭 Notes
 
+- “**OMOP-ish**” and “**FHIR-ish**” denote simplified demo subsets — for concept demonstration, not production.  
+- Branches represent different pipeline stages: **data**, **reports**, **analytics**.  
+- Fully compatible with **AWS Serverless Framework** and **AWS SAM** deployments.  
+- Designed for interoperability between **OpenFDA RWE datasets** and AWS-native analytics tools.
+
+---
 
 📚 References
-
-Anderson W. et al. (2024), Real-world evidence in the cloud: Tutorial on developing an end-to-end data and analytics pipeline using AWS, Clin Transl Sci, 17:e70078.
-
+- Anderson W. et al. (2024), Real-world evidence in the cloud: Tutorial on developing an end-to-end data and analytics pipeline using AWS, Clin Transl Sci, 17:e70078.
 OMOP CDM — https://ohdsi.github.io/CommonDataModel/
 
-## Extensibility roadmap
-- Add openFDA AE external table (`rwe_external.openfda_adverse_events`) + joins.
-- Convert curated CSV → Parquet and register with Glue Crawler for faster Athena.
-- Attach QuickSight (or Managed Grafana) when account limits allow.
-- Orchestrate with Step Functions: ingest → transform → Athena → (opt) SageMaker.
+---
+## 📫 Contact
+Carlos Victor Montefusco Pereira, PhD  
+[LinkedIn](https://www.linkedin.com/in/camontefusco) | [GitHub](https://github.com/camontefusco)
